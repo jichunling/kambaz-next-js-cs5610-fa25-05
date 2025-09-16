@@ -1,3 +1,6 @@
+//Remove this page to make Kambaz page the default page
+//name Kambaz with ()
+
 import Image from "next/image";
 
 export default function Home() {
