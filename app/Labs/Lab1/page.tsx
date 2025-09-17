@@ -1,3 +1,4 @@
+import Link from "next/link";
 export default function Lab1() {
   return (    
     <div id="wd-lab1">
@@ -259,7 +260,7 @@ This is the first paragraph. The paragraph tag is used to format vertical gaps b
 
 <h4>Anchor tag</h4>
 Please
-<a href="https://www.lipsum.com" id="wd-lipsum">click here</a>
+<Link href="https://www.lipsum.com" id="wd-lipsum">click here</Link>
  to get dummy text<br/>
 
 </form>
