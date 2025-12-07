@@ -3,9 +3,18 @@
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as client from "../../client";
 
-export default function TrueFalse({ onCancel }: { onCancel?: () => void }) {
+type InitialTF = {
+    _id?: string;
+    title?: string;
+    points?: number;
+    question?: string;
+    correctAnswer?: boolean;
+};
+
+export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void; initial?: InitialTF }) {
     const router = useRouter();
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
     const [saving, setSaving] = useState(false);
@@ -17,7 +26,6 @@ export default function TrueFalse({ onCancel }: { onCancel?: () => void }) {
 
     const handleCancel = () => {
         if (onCancel) return onCancel();
-        router.push(`/Courses/${cid}/Quizzes/${qid}`);
     };
 
     const handleSave = async () => {
@@ -33,14 +41,22 @@ export default function TrueFalse({ onCancel }: { onCancel?: () => void }) {
                 title: title.trim(),
                 points: Number(points),
                 question: question.trim(),
-                correctAnswer: correct, // true or false
+                correctAnswer: correct,
             };
-            console.log("Saving true/false question...", payload);
-            // TODO: POST to your API
+            await client.createQuestion(cid, qid, payload);
         } finally {
             setSaving(false);
         }
     };
+
+    // Prefill from initial question if provided
+    useEffect(() => {
+        if (!initial) return;
+        if (typeof initial.title === "string") setTitle(initial.title);
+        if (typeof initial.points === "number") setPoints(initial.points);
+        if (typeof initial.question === "string") setQuestion(initial.question);
+        if (typeof initial.correctAnswer === "boolean") setCorrect(initial.correctAnswer);
+    }, [initial]);
 
     return (
         <div className="d-flex justify-content-center">

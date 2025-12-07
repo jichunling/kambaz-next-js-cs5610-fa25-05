@@ -3,11 +3,21 @@
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as client from "../../client";
+
+type InitialQuestion = {
+    _id?: string;
+    title?: string;
+    points?: number;
+    question?: string;
+    choices?: string[];
+    correctAnswer?: string;
+};
 
 type Choice = { id: string; text: string };
 
-export default function MultipleChoice({ onCancel }: { onCancel?: () => void }) {
+export default function MultipleChoice({ onCancel, initial }: { onCancel?: () => void; initial?: InitialQuestion }) {
     const router = useRouter();
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
     const [saving, setSaving] = useState(false);
@@ -32,6 +42,24 @@ export default function MultipleChoice({ onCancel }: { onCancel?: () => void }) 
         router.push(`/Courses/${cid}/Quizzes/${qid}`);
     };
 
+    useEffect(() => {
+        if (!initial) return;
+        if (typeof initial.title === "string") setTitle(initial.title);
+        if (typeof initial.points === "number") setPoints(initial.points);
+        if (typeof initial.question === "string") setQuestion(initial.question);
+        const initialChoices = Array.isArray(initial.choices) ? initial.choices : [];
+        const mapped = initialChoices.length > 0
+            ? initialChoices.map((txt) => ({ id: newId(), text: txt }))
+            : [{ id: newId(), text: "" }, { id: newId(), text: "" }];
+        setChoices(mapped);
+        if (typeof initial.correctAnswer === "string") {
+            const match = mapped.find((c) => c.text === initial.correctAnswer);
+            setCorrectId(match ? match.id : null);
+        } else {
+            setCorrectId(null);
+        }
+    }, [initial]);
+
     const addChoice = () => {
         setChoices((prev) => [...prev, { id: newId(), text: "" }]);
     };
@@ -46,10 +74,8 @@ export default function MultipleChoice({ onCancel }: { onCancel?: () => void }) 
     };
 
     const handleSave = async () => {
-        // Simple validation
         const trimmed = choices.map(c => ({ ...c, text: c.text.trim() }));
         const nonEmpty = trimmed.filter(c => c.text.length > 0);
-
         if (!title.trim()) return alert("Please enter a title.");
         if (points === "" || isNaN(Number(points))) return alert("Please enter points.");
         if (!question.trim()) return alert("Please enter the question text.");
@@ -58,16 +84,22 @@ export default function MultipleChoice({ onCancel }: { onCancel?: () => void }) 
 
         setSaving(true);
         try {
+            const correctChoice = nonEmpty.find(c => c.id === correctId);
+            if (!correctChoice) {
+                // This should not happen if the above validation is correct
+                alert("An error occurred. Could not find the correct choice.");
+                return;
+            }
             const payload = {
                 type: "multiple-choice",
                 title: title.trim(),
                 points: Number(points),
                 question: question.trim(),
-                choices: trimmed,
-                correctChoiceId: correctId,
+                choices: nonEmpty.map(c => c.text),
+                correctAnswer: correctChoice.text,
             };
-            console.log("Saving multiple choice question...", payload);
-            // TODO: POST to your API
+            await client.createQuestion(cid, qid, payload);
+            // router.push(`/Courses/${cid}/Quizzes/${qid}`);
         } finally {
             setSaving(false);
         }

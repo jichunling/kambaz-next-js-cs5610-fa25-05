@@ -3,11 +3,20 @@
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as client from "../../client";
 
 type BlankAns = { id: string; text: string };
 
-export default function FillInTheBlank({ onCancel }: { onCancel?: () => void }) {
+type InitialFIB = {
+    _id?: string;
+    title?: string;
+    points?: number;
+    question?: string;
+    possibleAnswers?: string[];
+};
+
+export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () => void; initial?: InitialFIB }) {
     const router = useRouter();
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
     const [saving, setSaving] = useState(false);
@@ -29,7 +38,7 @@ export default function FillInTheBlank({ onCancel }: { onCancel?: () => void }) 
 
     const handleCancel = () => {
         if (onCancel) return onCancel();
-        router.push(`/Courses/${cid}/Quizzes/${qid}`);
+        // router.push(`/Courses/${cid}/Quizzes/${qid}`);
     };
 
     const addAnswer = () => {
@@ -56,19 +65,31 @@ export default function FillInTheBlank({ onCancel }: { onCancel?: () => void }) 
         setSaving(true);
         try {
             const payload = {
-                type: "fill-in-the-blank",
+                type: "fill-in-the-blanks",
                 title: title.trim(),
                 points: Number(points),
-                question: question.trim(), // replace textarea with a WYSIWYG if desired
-                acceptableAnswers: nonEmpty, // [{id, text}]
-                caseInsensitive,
+                question: question.trim(),
+                possibleAnswers: nonEmpty.map((a) => a.text),
             };
-            console.log("Saving fill-in-the-blank question...", payload);
-            // TODO: POST to your API
+            await client.createQuestion(cid, qid, payload);
+
         } finally {
             setSaving(false);
         }
     };
+
+    // Prefill from initial question if provided
+    useEffect(() => {
+        if (!initial) return;
+        if (typeof initial.title === "string") setTitle(initial.title);
+        if (typeof initial.points === "number") setPoints(initial.points);
+        if (typeof initial.question === "string") setQuestion(initial.question);
+        const fibAnswers = Array.isArray(initial.possibleAnswers) ? initial.possibleAnswers : [];
+        const mapped = fibAnswers.length > 0
+            ? fibAnswers.map((txt) => ({ id: newId(), text: txt }))
+            : [{ id: newId(), text: "" }, { id: newId(), text: "" }];
+        setAnswers(mapped);
+    }, [initial]);
 
     return (
         <div className="d-flex justify-content-center">

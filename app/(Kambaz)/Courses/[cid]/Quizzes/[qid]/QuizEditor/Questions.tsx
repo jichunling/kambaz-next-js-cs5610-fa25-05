@@ -3,13 +3,26 @@
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MultipleChoice from "./MultipleChoice";
 import TrueFalse from "./TrueFalse";
 import FillInTheBlank from "./FillInTheBlank";
+import * as coursesClient from "../../../../client";
 
 type QType = "multiple-choice" | "true-false" | "fill-in-the-blank";
 type QuestionItem = { id: string; type: QType };
+
+type Question = {
+    _id: string;
+    title: string;
+    points: number;
+    question: string;
+    type: "multiple-choice" | "true-false" | "fill-in-the-blank" | "fill-in-the-blanks";
+    choices?: string[];
+    correctAnswer?: string | boolean;
+    possibleAnswers?: string[];
+};
+type Quiz = { _id: string; title: string; questions?: Question[] };
 
 export default function Questions() {
     const router = useRouter();
@@ -18,6 +31,8 @@ export default function Questions() {
     const [questionType, setQuestionType] = useState<QType>("multiple-choice");
 
     const [items, setItems] = useState<QuestionItem[]>([]);
+    const [existingQuestions, setExistingQuestions] = useState<Question[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
 
     const newId = () =>
         typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -41,6 +56,25 @@ export default function Questions() {
         console.log("Saving quiz questions...");
     };
 
+    // Load existing questions for this quiz (auto-populated)
+    useEffect(() => {
+        const fetchQuizzes = async () => {
+            try {
+                setLoading(true);
+                const quizzes = await coursesClient.findQuizzesForCourse(cid);
+                const current: Quiz | undefined = Array.isArray(quizzes)
+                    ? (quizzes as Quiz[]).find((q) => q._id === qid)
+                    : undefined;
+                setExistingQuestions(current?.questions ?? []);
+            } catch (err) {
+                console.error("Failed to fetch quizzes/questions", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (cid && qid) fetchQuizzes();
+    }, [cid, qid]);
+
     return (
         <div className="d-flex justify-content-center flex-column gap-2 mb-3">
             <div className="d-flex justify-content-center">
@@ -54,7 +88,6 @@ export default function Questions() {
                 </Button>
             </div>
 
-            {/* Question type selector (controls which type gets added) */}
             <div className="d-flex justify-content-center">
                 <Form.Select
                     aria-label="Select question type"
@@ -73,7 +106,63 @@ export default function Questions() {
 
             <hr />
 
-            {/* Render all added question editors */}
+            <div className="d-flex flex-column gap-4">
+                {loading && <div>Loading…</div>}
+                {!loading && existingQuestions.length === 0 && (
+                    <div className="text-muted">No questions yet.</div>
+                )}
+                {!loading && existingQuestions.length > 0 && (
+                    <>
+                        {existingQuestions
+                            .filter((q) => q.type === "multiple-choice")
+                            .map((q) => (
+                                <MultipleChoice
+                                    key={q._id}
+                                    onCancel={() => { /* no removal for existing here */ }}
+                                    initial={{
+                                        _id: q._id,
+                                        title: q.title,
+                                        points: q.points,
+                                        question: q.question,
+                                        choices: q.choices,
+                                        correctAnswer: typeof q.correctAnswer === "string" ? q.correctAnswer : undefined,
+                                    }}
+                                />
+                            ))}
+                        {existingQuestions
+                            .filter((q) => q.type === "true-false")
+                            .map((q) => (
+                                <TrueFalse
+                                    key={q._id}
+                                    onCancel={() => { /* no removal for existing here */ }}
+                                    initial={{
+                                        _id: q._id,
+                                        title: q.title,
+                                        points: q.points,
+                                        question: q.question,
+                                        correctAnswer: typeof q.correctAnswer === "boolean" ? q.correctAnswer : undefined,
+                                    }}
+                                />
+                            ))}
+                        {existingQuestions
+                            .filter((q) => q.type === "fill-in-the-blank" || q.type === "fill-in-the-blanks")
+                            .map((q) => (
+                                <FillInTheBlank
+                                    key={q._id}
+                                    onCancel={() => { /* no removal for existing here */ }}
+                                    initial={{
+                                        _id: q._id,
+                                        title: q.title,
+                                        points: q.points,
+                                        question: q.question,
+                                        possibleAnswers: Array.isArray(q.possibleAnswers) ? q.possibleAnswers : [],
+                                    }}
+                                />
+                            ))}
+                    </>
+                )}
+            </div>
+
             <div className="d-flex flex-column gap-4">
                 {items.map((it) => (
                     <div key={it.id}>
@@ -90,15 +179,14 @@ export default function Questions() {
                 ))}
             </div>
 
-            {/* If you want only the inner component's Save/Cancel, remove this footer */}
             <div className="d-flex gap-2 justify-content-center mt-3">
-                <Button variant="danger" onClick={handleCancel} disabled={saving}>
+                <Button variant="danger" onClick={handleCancel}>
                     Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={saving}
+                <Button onClick={handleSave}
                     variant="light"
                     className="bg-white border border-dark">
-                    {saving ? "Saving…" : "Save"}
+                    Save
                 </Button>
             </div>
         </div>
