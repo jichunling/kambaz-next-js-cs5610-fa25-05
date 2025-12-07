@@ -27,6 +27,8 @@ type Quiz = {
     multipleAttempts?: string | boolean;
     // Optional field if present to limit attempts
     attemptsAllowed?: number;
+    oneQuestionAtATime?: string | boolean;
+    lockQuestionAfterAsnwering?: string | boolean;
 };
 
 type LastAttempt = {
@@ -54,6 +56,14 @@ export default function QuizPreviewPage() {
     const showResultsMode = useMemo(() => {
         return isStudent && !started && !!lastAttempt;
     }, [isStudent, started, lastAttempt]);
+    // One question at a time support
+    const oneAtATime = useMemo(() => {
+        return quiz?.oneQuestionAtATime === "Yes" || quiz?.oneQuestionAtATime === true;
+    }, [quiz]);
+    const [currentIndex, setCurrentIndex] = useState<number>(0);
+    // Previous should always be available when not at the first question
+    const canPrev = started && oneAtATime && currentIndex > 0;
+    const canNext = started && oneAtATime && currentIndex < ((quiz?.questions?.length ?? 1) - 1);
 
     useEffect(() => {
         const load = async () => {
@@ -170,6 +180,7 @@ export default function QuizPreviewPage() {
         setSubmitted(false);
         setScore(0);
         setStarted(false);
+        setCurrentIndex(0);
     };
 
     const renderQuestion = (q: Question, idx: number) => {
@@ -328,6 +339,26 @@ export default function QuizPreviewPage() {
                                             Submit
                                         </Button>
                                     )}
+                                    {/* One-at-a-time navigation */}
+                                    {started && !submitted && oneAtATime && (
+                                        <div className="d-flex align-items-center gap-2">
+                                            <Button
+                                                variant="outline-secondary"
+                                                onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+                                                disabled={!canPrev}
+                                            >
+                                                Previous
+                                            </Button>
+                                            <Button
+                                                variant="outline-secondary"
+                                                onClick={() => setCurrentIndex(i => Math.min((quiz?.questions?.length ?? 1) - 1, i + 1))}
+                                                disabled={!canNext}
+                                            >
+                                                Next
+                                            </Button>
+                                            <span className="text-muted">Question {currentIndex + 1} of {quiz?.questions?.length ?? 0}</span>
+                                        </div>
+                                    )}
                                     {/* Allow Reset only before submission to avoid clearing a student's results */}
                                     {started && !submitted && (
                                         <Button variant="outline-secondary" onClick={resetPreview}>
@@ -359,7 +390,11 @@ export default function QuizPreviewPage() {
                         </div>
 
                         {quiz?.questions && quiz.questions.length > 0 ? (
-                            quiz.questions.map((q, i) => renderQuestion(q, i))
+                            oneAtATime && started && !submitted ? (
+                                renderQuestion(quiz.questions[currentIndex], currentIndex)
+                            ) : (
+                                quiz.questions.map((q, i) => renderQuestion(q, i))
+                            )
                         ) : (
                             <div className="text-muted">No questions to preview.</div>
                         )}

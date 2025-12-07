@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { Form, Button, FormControl } from "react-bootstrap";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { setCurrentUser } from "../reducer";
 import { useRouter } from "next/navigation";
@@ -15,13 +15,22 @@ export default function Profile() {
   const [profile, setProfile] = useState<any>({});
   const dispatch = useDispatch();
   const router = useRouter();
-  const { currentUser } = useSelector((state: any) => state.accountReducer);
-  const fetchProfile = () => {
-    if (!currentUser) return router.push("/Kambaz/Account/Signin");
-    setProfile(currentUser);
-  };
+  // Access to dispatcher only; profile is fetched from server session
+  useSelector((state: any) => state.accountReducer); // ensure store subscription (no direct usage)
+  const fetchProfile = useCallback(async () => {
+    try {
+      // Use POST /api/users/profile to retrieve the session user
+      const serverProfile = await client.profile();
+      setProfile(serverProfile);
+      dispatch(setCurrentUser(serverProfile));
+    } catch {
+      // If not authenticated, redirect to Signin
+      router.push("/Kambaz/Account/Signin");
+    }
+  }, [dispatch, router]);
   const updateProfile = async () => {
     const updatedProfile = await client.updateUser(profile);
+    setProfile(updatedProfile);
     dispatch(setCurrentUser(updatedProfile));
   };
 
@@ -29,33 +38,37 @@ export default function Profile() {
   const signout = async () => {
     await client.signout();           //1. tell the server first
     dispatch(setCurrentUser(null));   //2. clear out locally
-    router.push("/Account/Signin");
+    router.push("/Kambaz/Account/Signin");
   };
-  useEffect(() => { fetchProfile(); }, []);
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   return (
     <div id="wd-profile-screen">
       <h1>Profile</h1>
       {profile && (
         <div>
-          <FormControl defaultValue={profile.username} id="wd-username" className="mb-2"
+          <FormControl value={profile.username || ""} id="wd-username" className="mb-2"
             onChange={(e) => setProfile({ ...profile, username: e.target.value })} />
-          <FormControl defaultValue={profile.password} id="wd-password" className="mb-2"
+          <FormControl value={profile.password || ""} id="wd-password" className="mb-2"
             onChange={(e) => setProfile({ ...profile, password: e.target.value })} />
-          <FormControl defaultValue={profile.firstName} id="wd-firstname" className="mb-2"
+          <FormControl value={profile.firstName || ""} id="wd-firstname" className="mb-2"
             onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} />
-          <FormControl defaultValue={profile.lastName} id="wd-lastname" className="mb-2"
+          <FormControl value={profile.lastName || ""} id="wd-lastname" className="mb-2"
             onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} />
-          <FormControl defaultValue={profile.dob} id="wd-dob" className="mb-2"
+          <FormControl value={profile.dob ? String(profile.dob).substring(0, 10) : ""} id="wd-dob" className="mb-2"
             onChange={(e) => setProfile({ ...profile, dob: e.target.value })} type="date" />
-          <FormControl defaultValue={profile.email} id="wd-email" className="mb-2"
+          <FormControl value={profile.email || ""} id="wd-email" className="mb-2"
             onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
-          <select onChange={(e) => setProfile({ ...profile, role: e.target.value })}
+          <select value={profile.role || "USER"} onChange={(e) => setProfile({ ...profile, role: e.target.value })}
             className="form-control mb-2" id="wd-role">
-            <option value="USER">User</option>            <option value="ADMIN">Admin</option>
-            <option value="FACULTY">Faculty</option>      <option value="STUDENT">Student</option>
+            <option value="USER">User</option>
+            <option value="ADMIN">Admin</option>
+            <option value="FACULTY">Faculty</option>
+            <option value="STUDENT">Student</option>
           </select>
-          <button className="btn btn-primary" onClick={updateProfile}>Update </button>
+          <button className="btn btn-primary" onClick={updateProfile}>Update</button>
 
           <Button onClick={signout} className="mb-2 btn btn-danger float-end" id="wd-signout-btn">
             Sign out
