@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
-import { Card, Row, Col, Button } from "react-bootstrap";
+import { Card, Row, Col } from "react-bootstrap";
 import Table from "react-bootstrap/Table";
 import type { Quiz, updateQuiz, addQuiz, setQuiz } from "../reducer";
 import type { RootState } from "../../../../store";
@@ -81,7 +81,12 @@ export default function QuizDetails() {
             {/* centered header buttons */}
             <div className="d-flex align-items-center justify-content-center mb-3">
                 <div className="d-flex gap-2">
-                    <Button variant="outline-secondary">Preview</Button>
+                    <Link
+                        href={`/Courses/${cid}/Quizzes/${qid}/Preview`}
+                        className="btn btn-outline-secondary"
+                    >
+                        Preview
+                    </Link>
                     <Link
                         href={`/Courses/${cid}/Quizzes/${qid}/QuizEditor`}
                         className="btn btn-outline-secondary"

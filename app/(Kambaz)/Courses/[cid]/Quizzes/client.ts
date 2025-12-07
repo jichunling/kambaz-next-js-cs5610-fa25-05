@@ -35,3 +35,61 @@ export const deleteQuestion = async (courseId: string, quizId: string, questionI
   const { data } = await axios.delete(`${COURSES_API}/${courseId}/quizzes/${quizId}/questions/${questionId}`);
   return data;
 };
+
+// --- Student quiz answer persistence (APIs to be added server-side) ---
+// Save a single answer (optional progressive save)
+export const saveQuizAnswer = async (
+  courseId: string,
+  quizId: string,
+  questionId: string,
+  answer: string | boolean
+) => {
+  // Placeholder endpoint; implement server route later
+  const { data } = await axios.post(
+    `${COURSES_API}/${courseId}/quizzes/${quizId}/answers/${questionId}`,
+    { answer }
+  );
+  return data;
+};
+
+// Submit full quiz attempt with all answers and computed score
+export const submitQuizAnswers = async (
+  courseId: string,
+  quizId: string,
+  payload: {
+    answers: Record<string, string | boolean>;
+    score: number;
+    totalPoints: number;
+  }
+) => {
+  // Placeholder endpoint; implement server route later
+  const { data } = await axios.post(
+    `${COURSES_API}/${courseId}/quizzes/${quizId}/attempts`,
+    payload
+  );
+  return data;
+};
+
+export const getLastQuizAttempt = async (
+  courseId: string,
+  quizId: string,
+  userId: string
+) => {
+  const { data } = await axios.get(
+    `${COURSES_API}/${courseId}/quizzes/${quizId}/attempts/last`,
+    { params: { userId } }
+  );
+  return data;
+};
+
+export const getQuizAttemptsCount = async (
+  courseId: string,
+  quizId: string,
+  userId: string
+) => {
+  const { data } = await axios.get(
+    `${COURSES_API}/${courseId}/quizzes/${quizId}/attempts/count`,
+    { params: { userId } }
+  );
+  return data as { count: number };
+};
