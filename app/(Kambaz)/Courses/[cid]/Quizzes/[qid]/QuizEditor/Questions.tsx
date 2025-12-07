@@ -27,7 +27,7 @@ type Quiz = { _id: string; title: string; questions?: Question[] };
 export default function Questions() {
     const router = useRouter();
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
-    const [saving, setSaving] = useState(false);
+    const [saving] = useState(false);
     const [questionType, setQuestionType] = useState<QType>("multiple-choice");
 
     const [items, setItems] = useState<QuestionItem[]>([]);
@@ -50,6 +50,10 @@ export default function Questions() {
 
     const removeItem = (id: string) => {
         setItems((prev) => prev.filter((it) => it.id !== id));
+    };
+
+    const removeExisting = (questionId: string) => {
+        setExistingQuestions((prev) => prev.filter((q) => q._id !== questionId));
     };
 
     const handleSave = async () => {
@@ -118,7 +122,7 @@ export default function Questions() {
                             .map((q) => (
                                 <MultipleChoice
                                     key={q._id}
-                                    onCancel={() => { /* no removal for existing here */ }}
+                                    onCancel={() => removeExisting(q._id)}
                                     initial={{
                                         _id: q._id,
                                         title: q.title,
@@ -134,7 +138,7 @@ export default function Questions() {
                             .map((q) => (
                                 <TrueFalse
                                     key={q._id}
-                                    onCancel={() => { /* no removal for existing here */ }}
+                                    onCancel={() => removeExisting(q._id)}
                                     initial={{
                                         _id: q._id,
                                         title: q.title,
@@ -149,7 +153,7 @@ export default function Questions() {
                             .map((q) => (
                                 <FillInTheBlank
                                     key={q._id}
-                                    onCancel={() => { /* no removal for existing here */ }}
+                                    onCancel={() => removeExisting(q._id)}
                                     initial={{
                                         _id: q._id,
                                         title: q.title,
@@ -179,7 +183,7 @@ export default function Questions() {
                 ))}
             </div>
 
-            <div className="d-flex gap-2 justify-content-center mt-3">
+            {/* <div className="d-flex gap-2 justify-content-center mt-3">
                 <Button variant="danger" onClick={handleCancel}>
                     Cancel
                 </Button>
@@ -188,7 +192,7 @@ export default function Questions() {
                     className="bg-white border border-dark">
                     Save
                 </Button>
-            </div>
+            </div> */}
         </div>
     );
 }

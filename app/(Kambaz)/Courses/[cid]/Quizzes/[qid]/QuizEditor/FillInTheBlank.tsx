@@ -2,7 +2,7 @@
 
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import * as client from "../../client";
 
@@ -17,7 +17,6 @@ type InitialFIB = {
 };
 
 export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () => void; initial?: InitialFIB }) {
-    const router = useRouter();
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
     const [saving, setSaving] = useState(false);
 
@@ -36,9 +35,16 @@ export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () =>
             : Math.random().toString(36).slice(2);
     }
 
-    const handleCancel = () => {
-        if (onCancel) return onCancel();
-        // router.push(`/Courses/${cid}/Quizzes/${qid}`);
+    const handleDelete = async () => {
+        if (initial?._id) {
+            try {
+                await client.deleteQuestion(cid, qid, initial._id);
+            } catch {
+                alert("Failed to delete question");
+                return;
+            }
+        }
+        if (onCancel) onCancel();
     };
 
     const addAnswer = () => {
@@ -168,8 +174,8 @@ export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () =>
                 </div>
 
                 <div className="d-flex gap-2 justify-content-end">
-                    <Button variant="danger" onClick={handleCancel} disabled={saving}>
-                        Cancel
+                    <Button variant="danger" onClick={handleDelete} disabled={saving}>
+                        Delete
                     </Button>
                     <Button
                         onClick={handleSave}

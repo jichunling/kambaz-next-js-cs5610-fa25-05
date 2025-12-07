@@ -2,7 +2,7 @@
 
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import * as client from "../../client";
 
@@ -15,7 +15,6 @@ type InitialTF = {
 };
 
 export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void; initial?: InitialTF }) {
-    const router = useRouter();
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
     const [saving, setSaving] = useState(false);
 
@@ -24,8 +23,16 @@ export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void
     const [question, setQuestion] = useState("");
     const [correct, setCorrect] = useState<boolean | null>(null);
 
-    const handleCancel = () => {
-        if (onCancel) return onCancel();
+    const handleDelete = async () => {
+        if (initial?._id) {
+            try {
+                await client.deleteQuestion(cid, qid, initial._id);
+            } catch {
+                alert("Failed to delete question");
+                return;
+            }
+        }
+        if (onCancel) onCancel();
     };
 
     const handleSave = async () => {
@@ -123,8 +130,8 @@ export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void
                 </div>
 
                 <div className="d-flex gap-2 justify-content-end">
-                    <Button variant="danger" onClick={handleCancel} disabled={saving}>
-                        Cancel
+                    <Button variant="danger" onClick={handleDelete} disabled={saving}>
+                        Delete
                     </Button>
                     <Button
                         onClick={handleSave}

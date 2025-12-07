@@ -2,7 +2,7 @@
 
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import * as client from "../../client";
 
@@ -18,7 +18,6 @@ type InitialQuestion = {
 type Choice = { id: string; text: string };
 
 export default function MultipleChoice({ onCancel, initial }: { onCancel?: () => void; initial?: InitialQuestion }) {
-    const router = useRouter();
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
     const [saving, setSaving] = useState(false);
 
@@ -37,9 +36,17 @@ export default function MultipleChoice({ onCancel, initial }: { onCancel?: () =>
             : Math.random().toString(36).slice(2);
     }
 
-    const handleCancel = () => {
-        if (onCancel) return onCancel();
-        router.push(`/Courses/${cid}/Quizzes/${qid}`);
+    const handleDelete = async () => {
+        // If there's an existing ID, delete from server first
+        if (initial?._id) {
+            try {
+                await client.deleteQuestion(cid, qid, initial._id);
+            } catch {
+                alert("Failed to delete question");
+                return;
+            }
+        }
+        if (onCancel) onCancel();
     };
 
     useEffect(() => {
@@ -179,8 +186,8 @@ export default function MultipleChoice({ onCancel, initial }: { onCancel?: () =>
                 </div>
 
                 <div className="d-flex gap-2 justify-content-end">
-                    <Button variant="danger" onClick={handleCancel} disabled={saving}>
-                        Cancel
+                    <Button variant="danger" onClick={handleDelete} disabled={saving}>
+                        Delete
                     </Button>
                     <Button
                         onClick={handleSave}
