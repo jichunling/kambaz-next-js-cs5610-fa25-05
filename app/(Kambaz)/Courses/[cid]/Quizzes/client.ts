@@ -1,38 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 const HTTP_SERVER = process.env.NEXT_PUBLIC_HTTP_SERVER;
-const QUIZZES_API = `${HTTP_SERVER}/api/quizzes`;
-const COURSES_API = `${HTTP_SERVER}/api/courses`;
+const axiosWithCredentials = axios.create({ baseURL: HTTP_SERVER, withCredentials: true });
 
 export const deleteQuiz = async (quizId: string) => {
-  const response = await axios.delete(`${QUIZZES_API}/${quizId}`);
+  const response = await axiosWithCredentials.delete(`/api/quizzes/${quizId}`);
   return response.data;
 };
 
 export const updateQuiz = async (cid: string, quiz: any) => {
-  const { data } = await axios.put(`${COURSES_API}/${cid}/quizzes/${quiz._id}`, quiz);
+  const { data } = await axiosWithCredentials.put(`/api/courses/${cid}/quizzes/${quiz._id}`, quiz);
   return data;
 };
 
 export const findQuizById = async (quizId: string) => {
   console.log('----Quiz Client: findQuizById----')
-  const response = await axios.get(`${QUIZZES_API}/${quizId}`);
+  const response = await axiosWithCredentials.get(`/api/quizzes/${quizId}`);
   console.log('Found quiz by id: ', response);
   return response.data;
 };
 
 export const updateQuizPublishStatus = async (quizId: string, published: boolean) => {
-  const { data } = await axios.put(`${QUIZZES_API}/${quizId}/publish`, { published });
+  const { data } = await axiosWithCredentials.put(`/api/quizzes/${quizId}/publish`, { published });
   return data;
 };
 
 export const createQuestion = async (courseId: string, quizId: string, question: any) => {
-  const { data } = await axios.post(`${COURSES_API}/${courseId}/quizzes/${quizId}/questions`, question);
+  const { data } = await axiosWithCredentials.post(`/api/courses/${courseId}/quizzes/${quizId}/questions`, question);
   return data;
 };
 
 export const deleteQuestion = async (courseId: string, quizId: string, questionId: string) => {
-  const { data } = await axios.delete(`${COURSES_API}/${courseId}/quizzes/${quizId}/questions/${questionId}`);
+  const { data } = await axiosWithCredentials.delete(`/api/courses/${courseId}/quizzes/${quizId}/questions/${questionId}`);
   return data;
 };
 
@@ -44,9 +43,8 @@ export const saveQuizAnswer = async (
   questionId: string,
   answer: string | boolean
 ) => {
-  // Placeholder endpoint; implement server route later
-  const { data } = await axios.post(
-    `${COURSES_API}/${courseId}/quizzes/${quizId}/answers/${questionId}`,
+  const { data } = await axiosWithCredentials.post(
+    `/api/courses/${courseId}/quizzes/${quizId}/answers/${questionId}`,
     { answer }
   );
   return data;
@@ -62,9 +60,8 @@ export const submitQuizAnswers = async (
     totalPoints: number;
   }
 ) => {
-  // Placeholder endpoint; implement server route later
-  const { data } = await axios.post(
-    `${COURSES_API}/${courseId}/quizzes/${quizId}/attempts`,
+  const { data } = await axiosWithCredentials.post(
+    `/api/courses/${courseId}/quizzes/${quizId}/attempts`,
     payload
   );
   return data;
@@ -75,8 +72,8 @@ export const getLastQuizAttempt = async (
   quizId: string,
   userId: string
 ) => {
-  const { data } = await axios.get(
-    `${COURSES_API}/${courseId}/quizzes/${quizId}/attempts/last`,
+  const { data } = await axiosWithCredentials.get(
+    `/api/courses/${courseId}/quizzes/${quizId}/attempts/last`,
     { params: { userId } }
   );
   return data;
@@ -87,8 +84,8 @@ export const getQuizAttemptsCount = async (
   quizId: string,
   userId: string
 ) => {
-  const { data } = await axios.get(
-    `${COURSES_API}/${courseId}/quizzes/${quizId}/attempts/count`,
+  const { data } = await axiosWithCredentials.get(
+    `/api/courses/${courseId}/quizzes/${quizId}/attempts/count`,
     { params: { userId } }
   );
   return data as { count: number };

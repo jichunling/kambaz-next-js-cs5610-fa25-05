@@ -51,6 +51,9 @@ export default function QuizPreviewPage() {
     const [userId, setUserId] = useState<string | null>(null);
     const [lastAttempt, setLastAttempt] = useState<LastAttempt>(null);
     const [attemptsCount, setAttemptsCount] = useState<number>(0);
+    const showResultsMode = useMemo(() => {
+        return isStudent && !started && !!lastAttempt;
+    }, [isStudent, started, lastAttempt]);
 
     useEffect(() => {
         const load = async () => {
@@ -139,7 +142,7 @@ export default function QuizPreviewPage() {
         setScore(points);
         setSubmitted(true);
 
-        // If student, submit attempt to server (API will be added later)
+        // If student, submit attempt to server
         if (isStudent) {
             try {
                 await quizClient.submitQuizAnswers(cid, qid, {
@@ -170,6 +173,10 @@ export default function QuizPreviewPage() {
     };
 
     const renderQuestion = (q: Question, idx: number) => {
+        const effectiveAnswers: Record<string, string | boolean> = showResultsMode && lastAttempt?.answers
+            ? lastAttempt.answers
+            : answers;
+        const showMarks = submitted || showResultsMode;
         return (
             <Card key={q._id} className="mb-3">
                 <Card.Header className="d-flex justify-content-between">
@@ -185,15 +192,15 @@ export default function QuizPreviewPage() {
                     {q.type === "multiple-choice" && (
                         <div>
                             {(q.choices ?? []).map((c, i) => {
-                                const selected = answers[q._id] === c;
-                                const isCorrect = submitted && q.correctAnswer === c;
-                                const isWrong = submitted && selected && q.correctAnswer !== c;
+                                const selected = effectiveAnswers[q._id] === c;
+                                const isCorrect = showMarks && q.correctAnswer === c;
+                                const isWrong = showMarks && selected && q.correctAnswer !== c;
                                 return (
                                     <div key={i} className="d-flex align-items-center gap-2 mb-2">
                                         <Form.Check
                                             name={`mc-${q._id}`}
                                             type="radio"
-                                            disabled={!started || submitted}
+                                            disabled={!started || submitted || showResultsMode}
                                             checked={selected}
                                             onChange={() => setAnswers(a => ({ ...a, [q._id]: c }))}
                                             aria-label={`Select choice ${i + 1}`}
@@ -210,15 +217,15 @@ export default function QuizPreviewPage() {
                     {q.type === "true-false" && (
                         <div className="d-flex flex-column gap-2">
                             {[true, false].map((val, i) => {
-                                const selected = answers[q._id] === val;
-                                const isCorrect = submitted && q.correctAnswer === val;
-                                const isWrong = submitted && selected && q.correctAnswer !== val;
+                                const selected = effectiveAnswers[q._id] === val;
+                                const isCorrect = showMarks && q.correctAnswer === val;
+                                const isWrong = showMarks && selected && q.correctAnswer !== val;
                                 return (
                                     <div key={i} className="d-flex align-items-center gap-2">
                                         <Form.Check
                                             name={`tf-${q._id}`}
                                             type="radio"
-                                            disabled={!started || submitted}
+                                            disabled={!started || submitted || showResultsMode}
                                             checked={selected}
                                             onChange={() => setAnswers(a => ({ ...a, [q._id]: val }))}
                                             aria-label={`Select ${val ? "True" : "False"}`}
@@ -239,17 +246,17 @@ export default function QuizPreviewPage() {
                             <Form.Control
                                 type="text"
                                 placeholder="Your answer"
-                                disabled={!started || submitted}
-                                value={typeof answers[q._id] === "string" ? (answers[q._id] as string) : ""}
+                                disabled={!started || submitted || showResultsMode}
+                                value={typeof effectiveAnswers[q._id] === "string" ? (effectiveAnswers[q._id] as string) : ""}
                                 onChange={(e) => setAnswers(a => ({ ...a, [q._id]: e.target.value }))}
                             />
-                            {submitted && (
+                            {showMarks && (
                                 <div>
                                     {(q.possibleAnswers ?? []).length > 0 && (
                                         <div className="text-muted">Acceptable answers: {(q.possibleAnswers ?? []).join(", ")}</div>
                                     )}
-                                    {typeof answers[q._id] === "string" && (q.possibleAnswers ?? []).length > 0 && (
-                                        ((q.possibleAnswers ?? []).some(a => a.trim() === String(answers[q._id]).trim())) ? (
+                                    {typeof effectiveAnswers[q._id] === "string" && (q.possibleAnswers ?? []).length > 0 && (
+                                        ((q.possibleAnswers ?? []).some(a => a.trim() === String(effectiveAnswers[q._id]).trim())) ? (
                                             <div className="text-success">✓ Correct</div>
                                         ) : (
                                             <div className="text-danger">✗ Incorrect</div>
@@ -271,40 +278,83 @@ export default function QuizPreviewPage() {
                 {!loading && error && <div className="text-danger">{error}</div>}
                 {!loading && !error && (
                     <>
-                        <div className="d-flex align-items-center justify-content-between mb-3">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
                             <h2 className="mb-0">{quiz?.title ?? "Quiz"}</h2>
                         </div>
-                        <h1>
-                            isStudent: {isStudent ? "Yes" : "No"}
-                        </h1>
 
                         {/* Controls */}
-                        <div className="d-flex gap-2 mb-3">
+                        <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                            {/* Student: Results mode header */}
+                            {showResultsMode && (
+                                <>
+                                    <div className="fw-semibold">Last attempt: {lastAttempt?.score ?? 0} / {lastAttempt?.totalPoints ?? totalPoints}</div>
+                                    {lastAttempt?.takenAt && (
+                                        <div className="text-muted">Taken: {new Date(lastAttempt.takenAt).toLocaleString()}</div>
+                                    )}
+                                    <div className="ms-auto" />
+                                    {/* Start new attempt only if allowed */}
+                                    <Button
+                                        variant="primary"
+                                        onClick={() => setStarted(true)}
+                                        disabled={!quiz || (quiz?.questions?.length ?? 0) === 0 || (() => {
+                                            const allowMultiple = quiz?.multipleAttempts === "Yes" || quiz?.multipleAttempts === true;
+                                            const limit = typeof quiz?.attemptsAllowed === "number" ? quiz!.attemptsAllowed : (allowMultiple ? Infinity : 1);
+                                            return !allowMultiple || attemptsCount >= limit;
+                                        })()}
+                                    >
+                                        Start New Attempt
+                                    </Button>
+                                </>
+                            )}
 
-                            {!started && (
-                                <Button variant="primary" onClick={() => setStarted(true)} disabled={!quiz || (quiz?.questions?.length ?? 0) === 0 || (isStudent && attemptsCount >= (typeof quiz?.attemptsAllowed === "number" ? quiz!.attemptsAllowed : (quiz?.multipleAttempts === "Yes" || quiz?.multipleAttempts === true ? Infinity : 1)))}>
-                                    {isStudent ? "Start Attempt" : "Start Preview"}
-                                </Button>
-                            )}
-                            {started && !submitted && (
-                                <Button variant="success" onClick={handleSubmit}>
-                                    Submit
-                                </Button>
-                            )}
-                            {(started || submitted) && (
-                                <Button variant="outline-secondary" onClick={resetPreview}>
-                                    Reset
-                                </Button>
-                            )}
-                            {submitted && (
-                                <div className="ms-auto fw-semibold">
-                                    Score: {score} / {totalPoints}
-                                </div>
-                            )}
-                            {!started && isStudent && lastAttempt && (
-                                <div className="ms-auto text-muted">
-                                    Last attempt: {lastAttempt.score} / {lastAttempt.totalPoints}
-                                </div>
+                            {/* Default controls (faculty or student during an ongoing attempt) */}
+                            {!showResultsMode && (
+                                <>
+                                    {!started && (
+                                        <Button
+                                            variant="primary"
+                                            onClick={() => setStarted(true)}
+                                            disabled={!quiz || (quiz?.questions?.length ?? 0) === 0 || (isStudent && (() => {
+                                                const allowMultiple = quiz?.multipleAttempts === "Yes" || quiz?.multipleAttempts === true;
+                                                const limit = typeof quiz?.attemptsAllowed === "number" ? quiz!.attemptsAllowed : (allowMultiple ? Infinity : 1);
+                                                return attemptsCount >= limit;
+                                            })())}
+                                        >
+                                            {isStudent ? "Start Attempt" : "Start Preview"}
+                                        </Button>
+                                    )}
+                                    {started && !submitted && (
+                                        <Button variant="success" onClick={handleSubmit}>
+                                            Submit
+                                        </Button>
+                                    )}
+                                    {/* Allow Reset only before submission to avoid clearing a student's results */}
+                                    {started && !submitted && (
+                                        <Button variant="outline-secondary" onClick={resetPreview}>
+                                            Reset
+                                        </Button>
+                                    )}
+                                    {/* Show score after submit for both faculty and students */}
+                                    {submitted && (
+                                        <div className="ms-auto fw-semibold">
+                                            Score: {score} / {totalPoints}
+                                        </div>
+                                    )}
+                                    {/* Students: offer new attempt if allowed after submitting */}
+                                    {isStudent && submitted && (
+                                        <Button
+                                            variant="primary"
+                                            onClick={() => { setAnswers({}); setSubmitted(false); setStarted(true); }}
+                                            disabled={(() => {
+                                                const allowMultiple = quiz?.multipleAttempts === "Yes" || quiz?.multipleAttempts === true;
+                                                const limit = typeof quiz?.attemptsAllowed === "number" ? quiz!.attemptsAllowed : (allowMultiple ? Infinity : 1);
+                                                return !allowMultiple || attemptsCount >= limit;
+                                            })()}
+                                        >
+                                            Start New Attempt
+                                        </Button>
+                                    )}
+                                </>
                             )}
                         </div>
 
