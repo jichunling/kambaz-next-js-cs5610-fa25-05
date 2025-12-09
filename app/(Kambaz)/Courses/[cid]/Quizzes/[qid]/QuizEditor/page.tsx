@@ -338,7 +338,7 @@ export default function QuizEditor() {
                     </div>
                 </Tab>
 
-                <Tab eventKey="quizzes" title="Quizzes">
+                <Tab eventKey="questions" title="Questions">
                     <Questions />
 
                 </Tab>

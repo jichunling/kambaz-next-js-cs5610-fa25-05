@@ -5,7 +5,7 @@ import Form from "react-bootstrap/Form";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import * as client from "../../client";
-
+import { useRouter } from "next/navigation";
 type InitialQuestion = {
     _id?: string;
     title?: string;
@@ -20,7 +20,7 @@ type Choice = { id: string; text: string };
 export default function MultipleChoice({ onCancel, initial }: { onCancel?: () => void; initial?: InitialQuestion }) {
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
     const [saving, setSaving] = useState(false);
-
+    const router = useRouter();
     const [title, setTitle] = useState("");
     const [points, setPoints] = useState<number | "">("");
     const [question, setQuestion] = useState("");
@@ -48,7 +48,9 @@ export default function MultipleChoice({ onCancel, initial }: { onCancel?: () =>
         }
         if (onCancel) onCancel();
     };
-
+    const handleCancel = () => {
+        router.push(`/Courses/${cid}/Quizzes`);
+    }
     useEffect(() => {
         if (!initial) return;
         if (typeof initial.title === "string") setTitle(initial.title);
@@ -80,7 +82,7 @@ export default function MultipleChoice({ onCancel, initial }: { onCancel?: () =>
         setChoices((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
     };
 
-    const handleSave = async () => {
+    const handleSave = async (publish: boolean) => {
         const trimmed = choices.map(c => ({ ...c, text: c.text.trim() }));
         const nonEmpty = trimmed.filter(c => c.text.length > 0);
         if (!title.trim()) return alert("Please enter a title.");
@@ -109,6 +111,11 @@ export default function MultipleChoice({ onCancel, initial }: { onCancel?: () =>
             // router.push(`/Courses/${cid}/Quizzes/${qid}`);
         } finally {
             setSaving(false);
+            if (publish) {
+                router.push(`/Courses/${cid}/Quizzes/${qid}/Preview`);
+            } else {
+                router.push(`/Courses/${cid}/Quizzes/${qid}`);
+            }
         }
     };
 
@@ -186,17 +193,29 @@ export default function MultipleChoice({ onCancel, initial }: { onCancel?: () =>
                 </div>
 
                 <div className="d-flex gap-2 justify-content-end">
+                    <Button variant="danger" onClick={handleCancel} disabled={saving} >
+                        Cancel
+                    </Button>
                     <Button variant="danger" onClick={handleDelete} disabled={saving}>
                         Delete
                     </Button>
                     <Button
-                        onClick={handleSave}
+                        onClick={() => handleSave(false)}
                         disabled={saving}
                         variant="light"
                         className="bg-white border border-dark"
                         style={{ minWidth: "12rem" }}
                     >
                         {saving ? "Saving…" : "Save Question"}
+                    </Button>
+                    <Button
+                        onClick={() => handleSave(true)}
+                        disabled={saving}
+                        variant="light"
+                        className="text-secondary bg-white border border-dark"
+                        style={{ minWidth: "12rem" }}
+                    >
+                        {saving ? "Saving…" : "Publish and Save"}
                     </Button>
                 </div>
             </div>

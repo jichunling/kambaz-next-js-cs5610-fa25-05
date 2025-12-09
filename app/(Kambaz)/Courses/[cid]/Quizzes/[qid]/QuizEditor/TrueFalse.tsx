@@ -2,7 +2,7 @@
 
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import * as client from "../../client";
 
@@ -22,7 +22,7 @@ export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void
     const [points, setPoints] = useState<number | "">("");
     const [question, setQuestion] = useState("");
     const [correct, setCorrect] = useState<boolean | null>(null);
-
+    const router = useRouter();
     const handleDelete = async () => {
         if (initial?._id) {
             try {
@@ -35,7 +35,7 @@ export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void
         if (onCancel) onCancel();
     };
 
-    const handleSave = async () => {
+    const handleSave = async (publish: boolean) => {
         if (!title.trim()) return alert("Please enter a title.");
         if (points === "" || isNaN(Number(points))) return alert("Please enter points.");
         if (!question.trim()) return alert("Please enter the question text.");
@@ -53,8 +53,17 @@ export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void
             await client.createQuestion(cid, qid, payload);
         } finally {
             setSaving(false);
+            if (publish) {
+                router.push(`/Courses/${cid}/Quizzes/${qid}/Preview`);
+            } else {
+                router.push(`/Courses/${cid}/Quizzes/${qid}`);
+            }
         }
     };
+
+    const handleCancel = () => {
+        router.push(`/Courses/${cid}/Quizzes`);
+    }
 
     // Prefill from initial question if provided
     useEffect(() => {
@@ -130,11 +139,14 @@ export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void
                 </div>
 
                 <div className="d-flex gap-2 justify-content-end">
+                    <Button variant="danger" onClick={handleCancel} disabled={saving} >
+                        Cancel
+                    </Button>
                     <Button variant="danger" onClick={handleDelete} disabled={saving}>
                         Delete
                     </Button>
                     <Button
-                        onClick={handleSave}
+                        onClick={() => handleSave(false)}
                         disabled={saving}
                         variant="light"
                         className="bg-white border border-dark"
@@ -142,6 +154,16 @@ export default function TrueFalse({ onCancel, initial }: { onCancel?: () => void
                     >
                         {saving ? "Saving…" : "Save Question"}
                     </Button>
+                    <Button
+                        onClick={() => handleSave(true)}
+                        disabled={saving}
+                        variant="light"
+                        className="text-secondary bg-white border border-dark"
+                        style={{ minWidth: "12rem" }}
+                    >
+                        {saving ? "Saving…" : "Publish and Save"}
+                    </Button>
+
                 </div>
             </div>
         </div>

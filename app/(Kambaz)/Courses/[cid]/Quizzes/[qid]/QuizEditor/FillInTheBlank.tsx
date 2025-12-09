@@ -3,6 +3,7 @@
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import * as client from "../../client";
 
@@ -18,6 +19,7 @@ type InitialFIB = {
 
 export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () => void; initial?: InitialFIB }) {
     const { cid, qid } = useParams<{ cid: string; qid: string }>();
+    const router = useRouter();
     const [saving, setSaving] = useState(false);
 
     const [title, setTitle] = useState("");
@@ -58,8 +60,11 @@ export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () =>
     const updateAnswer = (id: string, text: string) => {
         setAnswers((prev) => prev.map((a) => (a.id === id ? { ...a, text } : a)));
     };
+    const handleCancel = () => {
+        router.push(`/Courses/${cid}/Quizzes`);
+    }
 
-    const handleSave = async () => {
+    const handleSave = async (publish: boolean) => {
         const trimmed = answers.map((a) => ({ ...a, text: a.text.trim() }));
         const nonEmpty = trimmed.filter((a) => a.text.length > 0);
 
@@ -69,6 +74,7 @@ export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () =>
         if (nonEmpty.length < 1) return alert("Please provide at least one possible answer.");
 
         setSaving(true);
+
         try {
             const payload = {
                 type: "fill-in-the-blanks",
@@ -81,6 +87,11 @@ export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () =>
 
         } finally {
             setSaving(false);
+            if (publish) {
+                router.push(`/Courses/${cid}/Quizzes/${qid}/Preview`);
+            } else {
+                router.push(`/Courses/${cid}/Quizzes/${qid}`);
+            }
         }
     };
 
@@ -174,17 +185,29 @@ export default function FillInTheBlank({ onCancel, initial }: { onCancel?: () =>
                 </div>
 
                 <div className="d-flex gap-2 justify-content-end">
+                    <Button variant="danger" onClick={handleCancel} disabled={saving} >
+                        Cancel
+                    </Button>
                     <Button variant="danger" onClick={handleDelete} disabled={saving}>
                         Delete
                     </Button>
                     <Button
-                        onClick={handleSave}
+                        onClick={() => handleSave(false)}
                         disabled={saving}
                         variant="light"
                         className="text-secondary bg-white border border-dark"
                         style={{ minWidth: "12rem" }}
                     >
-                        {saving ? "Saving…" : "Save Question"}
+                        {saving ? "Saving…" : "Save"}
+                    </Button>
+                    <Button
+                        onClick={() => handleSave(true)}
+                        disabled={saving}
+                        variant="light"
+                        className="text-secondary bg-white border border-dark"
+                        style={{ minWidth: "12rem" }}
+                    >
+                        {saving ? "Saving…" : "Publish and Save"}
                     </Button>
                 </div>
             </div>
